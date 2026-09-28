@@ -80,7 +80,7 @@ public final class RequestHandler extends HttpRouter {
         if (plugin.hasPlugin("QuickShop-Hikari")) {
             ShopListEndpoint shops = new ShopListEndpoint();
             ShopEndpoint shop = new ShopEndpoint();
-            list("shops", shops);
+            asynchronous("shops", "shops", "GET", ignored -> shops.lookup());
             shopSearch(shops, shop);
         } else unavailable("shops", "shops", "GET", "POST");
         if (plugin.hasPlugin("PlaceholderAPI")) {
@@ -106,21 +106,14 @@ public final class RequestHandler extends HttpRouter {
     private JsonElement query(String body) { return RequestParser.query(body, maxItems); }
 
     private void shopSearch(ShopListEndpoint shops, ShopEndpoint shop) {
-        if (!plugin.getConfig().getBoolean("endpoints.shops", false)) return;
-        register(base + "/shops", "POST", request -> {
+        asynchronous("shops", "shops", "POST", request -> {
             RequestParser.SortedQuery query = RequestParser.sorted(request.body(), maxItems, maxPageSize, ShopSearch.SORTS);
             if (query.request().query().isJsonArray()) {
                 if (query.sort() != null) throw new BadRequestResponse("Shop sorting requires an object 'query'");
-                return GameThread.read(() -> {
-                    requireAvailable("shops");
-                    return batch(query.request().query().getAsJsonArray(), query.request().options(), shop);
-                });
+                return shop.handleQuery(query.request().query().getAsJsonArray(), query.request().options());
             }
             ShopSearch search = ShopSearch.parse(query);
-            String snapshot = GameThread.read(() -> {
-                requireAvailable("shops");
-                return shops.lookup();
-            });
+            String snapshot = shops.lookup();
             return search.response(snapshot);
         });
     }

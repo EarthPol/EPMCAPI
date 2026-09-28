@@ -4,7 +4,7 @@ Build with Java 21 and an installed Maven 3.9 or later: `mvn -Dmaven.test.skip=t
 
 Keep pull requests focused. Explain the client-visible behavior and include a request/response example for API changes. Preserve existing successful response shapes unless a change is explicitly documented as a migration. Validate changes with compilation and focused manual checks. Do not add automated test infrastructure unless requested.
 
-HTTP and database code must not directly read mutable game objects off-thread. Use `GameThread.read` to return detached values; keep database and LuckPerms storage waits on HTTP workers. Integrations must fail independently when their plugin or data source is absent. Do not claim Folia support without implementing and checking the relevant schedulers.
+Use `GameThread.read` for global/plugin metadata on Paper and Folia, and `GameThread.at` for block/inventory reads on the region owning a fixed location. Return detached values to HTTP workers; only those workers may wait for scheduled reads, database queries, or LuckPerms storage. Entity state must use the entity scheduler if added in future. Integrations must fail independently when their plugin or data source is absent and require Folia-compatible providers when running Folia. Compilation and scheduler checks do not replace live integration testing.
 
 Use `src/main/resources/config.yml` only for safe defaults. Do not commit deployment settings, real credentials, generated POMs, IDE files, built JARs, or local dependency caches. Keep plugin API dependencies `provided`; keep EarthPol-specific reflection inside the integration adapter.
 

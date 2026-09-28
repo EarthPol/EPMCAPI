@@ -3,13 +3,15 @@ package com.earthpol.epmcapi.endpoints.quickshop;
 import com.earthpol.epmcapi.EPMCAPI;
 import com.earthpol.epmcapi.endpoints.GetEndpoint;
 import com.earthpol.epmcapi.networking.FieldSelection;
+import com.earthpol.epmcapi.networking.GameThread;
 import com.earthpol.epmcapi.utils.ResponseSnapshot;
 import com.ghostchu.quickshop.api.QuickShopAPI;
-import com.ghostchu.quickshop.api.shop.Shop;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import org.bukkit.Location;
 
 import java.util.Set;
+import java.util.List;
 
 public class ShopListEndpoint extends GetEndpoint {
     private final ResponseSnapshot snapshot;
@@ -35,16 +37,22 @@ public class ShopListEndpoint extends GetEndpoint {
 
     @Override
     public JsonArray getJsonElement() {
-        JsonArray array = new JsonArray();
-        for (Shop shop : QuickShopAPI.getInstance().getShopManager().getAllShops()) {
-            if (maxPrice >= 0 && shop.getPrice() > maxPrice) continue;
-            Location location = shop.getLocation();
-            if (!allowedWorlds.isEmpty() && (location == null || location.getWorld() == null
-                    || !allowedWorlds.contains(location.getWorld().getName()))) continue;
+        List<ShopAccess.Target> targets = GameThread.read(() ->
+                QuickShopAPI.getInstance().getShopManager().getAllShops().stream()
+                        .filter(shop -> {
+                            Location location = shop.getLocation();
+                            return allowedWorlds.isEmpty() || location != null && location.getWorld() != null
+                                    && allowedWorlds.contains(location.getWorld().getName());
+                        })
+                        .map(shop -> ShopAccess.target(shop, null)).toList());
+        List<JsonElement> snapshots = ShopAccess.read(targets, shop -> {
+            if (maxPrice >= 0 && shop.getPrice() > maxPrice) return null;
             if (!includeOutOfStock && !shop.isUnlimited()
-                    && (shop.isSelling() && shop.getRemainingStock() < 1 || shop.isBuying() && shop.getRemainingSpace() < 1)) continue;
-            array.add(ShopJson.serialize(shop, FieldSelection.all()));
-        }
+                    && (shop.isSelling() && shop.getRemainingStock() < 1 || shop.isBuying() && shop.getRemainingSpace() < 1)) return null;
+            return ShopJson.serialize(shop, FieldSelection.all());
+        });
+        JsonArray array = new JsonArray();
+        for (JsonElement shop : snapshots) if (shop != null) array.add(shop);
         return array;
     }
 }

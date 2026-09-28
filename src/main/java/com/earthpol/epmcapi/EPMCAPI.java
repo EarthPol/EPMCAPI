@@ -3,6 +3,7 @@ package com.earthpol.epmcapi;
 import com.earthpol.epmcapi.db.Database;
 import com.earthpol.epmcapi.db.DiscordDatabase;
 import com.earthpol.epmcapi.networking.RequestHandler;
+import com.earthpol.epmcapi.networking.GameThread;
 import com.sun.net.httpserver.HttpServer;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -26,7 +27,7 @@ public class EPMCAPI extends JavaPlugin {
             int queueCapacity = positive("networking.queue_capacity", 25, 1000);
             positive("networking.max_query_items", 100, 1000);
             positive("networking.max_page_size", 100, 1000);
-            positive("networking.game_thread_timeout_ms", 2000, 30000);
+            GameThread.initialize(this, positive("networking.game_thread_timeout_ms", 2000, 30000));
             positive("database.query_timeout_seconds", 5, 60);
             workers = new ThreadPoolExecutor(workerCount, workerCount, 0, TimeUnit.MILLISECONDS,
                     new ArrayBlockingQueue<>(queueCapacity), Thread.ofPlatform().name("EPMCAPI-http-", 0).factory(),
@@ -84,10 +85,10 @@ public class EPMCAPI extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        GameThread.shutdown();
         if (server != null) { server.stop(0); server = null; }
         if (workers != null) workers.shutdownNow();
         if (deadlines != null) deadlines.shutdownNow();
-        getServer().getScheduler().cancelTasks(this);
         Database.close();
         DiscordDatabase.close();
     }
