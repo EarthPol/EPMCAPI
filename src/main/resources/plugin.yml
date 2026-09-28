@@ -1,0 +1,9 @@
+name: EPMCAPI
+version: '${project.version}'
+main: com.earthpol.epmcapi.EPMCAPI
+api-version: '1.21'
+depend: [Towny]
+softdepend: [Vault, LuckPerms, SiegeWar, Quarters, QuickShop-Hikari, PlaceholderAPI]
+authors: [0xBit]
+description: HTTP API for Towny and EarthPol integrations
+website: https://github.com/EarthPol/EPMCAPI
